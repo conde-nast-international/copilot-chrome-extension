@@ -1,7 +1,8 @@
 /**
  * Get the brand that corresponds with the hostname.
  *
- * @param {function(string)} hostname - called with the URL of the current tab
+ * @param {function(string)} copilotHostname - called with the desired Copilot hostname
+ * @param {function(string)} tabHostname - called with the hostname of the current tab URL
  *
  */
 let brandsPromise;
@@ -29,6 +30,23 @@ function getBrandFromHostname(copilotHostname, tabHostname) {
   });
 }
 
+function getCopilotHostname(tabHostname) {
+  if(tabHostname.endsWith('.com')) {
+    let tabSubdomain = tabHostname.split('.')[0];
+
+    let envPrefix = '';
+    envPrefix = (tabSubdomain == 'stag') ? 'stg-' : envPrefix;
+    envPrefix = (tabSubdomain == 'ci') ? 'ci-' : envPrefix;
+    envPrefix = (tabSubdomain == 'ap-ci') ? 'ci-' : envPrefix;
+
+    return `${envPrefix}copilot.aws.conde.io`;
+  } else {
+    let env = tabHostname.match(/staging\./) ? 'staging' : 'prod';
+
+    return `copilot.${env}.cni.digital`;
+  }
+}
+
 /**
  * Search the API for piece of content using digitalData, if found save the URL and enable the browserAction
  * @param  {Object} tab         tab where digitalData refers to
@@ -36,15 +54,9 @@ function getBrandFromHostname(copilotHostname, tabHostname) {
 function findCopilotContent(tab) {
   let brand;
   let url = new URL(tab.url);
+  let identifier = url.pathname.replace(/^\/*(.*?)\/*$/, '$1');
   let tabHostname = url.hostname;
-  let copilotHostname = 'copilot.aws.conde.io';
-
-  if(!tabHostname.endsWith('.com')) {
-    copilotHostname = 'copilot.prod.cni.digital';
-  }
-
-  let pathname = url.pathname;
-  let identifier = pathname.replace(/^\/*(.*?)\/*$/, '$1');
+  let copilotHostname = getCopilotHostname(tabHostname);
 
   getBrandFromHostname(copilotHostname, tabHostname)
   .then(function (result) {
